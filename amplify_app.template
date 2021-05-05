@@ -1,0 +1,75 @@
+Parameters:
+  Name:
+    Type: String
+    Description: Name of the Amplify app
+  Domain:
+    Type: String
+    Description: Root domain for the frontend app. For e.g medly.io
+  Repository:
+    Type: String
+    Description: GitHub Repository URL
+  OauthToken:
+    Type: String
+    Description: GitHub Oauth Token
+    NoEcho: true
+  IAMServiceRole:
+    Type: String
+    Description: IAM role used by amplify app
+  EnvironmentName:
+    Description: Environment name as you want
+    Type: String
+  Subdomain:
+    Type: String
+    Description: Name of the app for e.g ibd
+
+Resources:
+  AmplifyApp:
+    Type: AWS::Amplify::App
+    Properties:
+      Name: !Ref Name
+      OauthToken: !Ref OauthToken
+      Repository: !Ref Repository
+      IAMServiceRole: !Ref IAMServiceRole
+      AutoBranchCreationConfig:
+        EnableAutoBranchCreation: true
+        EnableAutoBuild: true
+        EnablePullRequestPreview: true
+        PullRequestEnvironmentName: !Ref EnvironmentName
+      EnableBranchAutoDeletion: true
+      CustomHeaders: |-
+      CustomHeaders: |-
+        customHeaders:
+          - pattern: '**/*'
+            headers:
+              - key: 'Strict-Transport-Security'
+                value: 'max-age=31536000; includeSubDomains'
+              - key: 'X-Frame-Options'
+                value: 'SAMEORIGIN'
+              - key: 'X-XSS-Protection'
+                value: '1; mode=block'
+              - key: 'X-Content-Type-Options'
+                value: 'nosniff'
+              - key: 'Server'
+                value: 'unknown'
+  AmplifyBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !GetAtt AmplifyApp.AppId
+      EnablePullRequestPreview: true
+      BranchName: master
+      Stage: PRODUCTION
+  AmplifyDomain:
+    Type: AWS::Amplify::Domain
+    Properties:
+      AppId: !GetAtt AmplifyApp.AppId
+      DomainName: !Ref Domain
+      EnableAutoSubDomain: true
+      AutoSubDomainIAMRole: !Ref IAMServiceRole
+      SubDomainSettings:
+        - BranchName: master
+          Prefix: !Ref Subdomain
+    DependsOn: AmplifyBranch
+Outputs:
+  AmplifyAppId:
+    Description: AppId of amplify resource
+    Value: !GetAtt AmplifyApp.AppId
